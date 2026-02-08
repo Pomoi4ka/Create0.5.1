@@ -1,5 +1,7 @@
 package com.simibubi.create.content.logistics.tunnel;
 
+import ru.sigpipe.utils.DirBoolMapUtils;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -527,7 +529,7 @@ public class BrassTunnelBlockEntity extends BeltTunnelBlockEntity implements IHa
 					continue;
 				if (direction == movementFacing.getOpposite())
 					continue;
-				if (!tunnelBE.sides.contains(direction))
+				if (!DirBoolMapUtils.containsBit(tunnelBE.sides, direction.ordinal()))
 					continue;
 
 				BlockPos offset = tunnelBE.worldPosition.below()
@@ -572,7 +574,7 @@ public class BrassTunnelBlockEntity extends BeltTunnelBlockEntity implements IHa
 	}
 
 	private boolean isValidFaceForFilter(Direction side) {
-		return sides.contains(side);
+		return DirBoolMapUtils.containsBit(sides, side.ordinal());
 	}
 
 	@Override

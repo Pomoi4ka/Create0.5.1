@@ -1,5 +1,7 @@
 package com.simibubi.create.content.fluids.pump;
 
+import ru.sigpipe.utils.DirBoolMapUtils;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -121,19 +123,17 @@ public class PumpBlockEntity extends KineticBlockEntity {
 		BlockFace start = new BlockFace(worldPosition, side);
 		boolean pull = isPullingOnSide(isFront(side));
 		Set<BlockFace> targets = new HashSet<>();
-		Map<BlockPos, Pair<Integer, Map<Direction, Boolean>>> pipeGraph = new HashMap<>();
+		Map<BlockPos, Pair<Integer, Integer>> pipeGraph = new HashMap<>();
 
 		if (!pull)
 			FluidPropagator.resetAffectedFluidNetworks(level, worldPosition, side.getOpposite());
 
 		if (!hasReachedValidEndpoint(level, start, pull)) {
 
-			pipeGraph.computeIfAbsent(worldPosition, $ -> Pair.of(0, new IdentityHashMap<>()))
-				.getSecond()
-				.put(side, pull);
-			pipeGraph.computeIfAbsent(start.getConnectedPos(), $ -> Pair.of(1, new IdentityHashMap<>()))
-				.getSecond()
-				.put(side.getOpposite(), !pull);
+			pipeGraph.computeIfAbsent(worldPosition, $ -> Pair.of(0, DirBoolMapUtils.putBit(0, side.ordinal(), pull)));
+				// .put(side, pull);
+            pipeGraph.computeIfAbsent(start.getConnectedPos(), $ -> Pair.of(1, DirBoolMapUtils.putBit(0, side.getOpposite().ordinal(), !pull)));
+				// .put(side.getOpposite(), !pull);
 
 			List<Pair<Integer, BlockPos>> frontier = new ArrayList<>();
 			Set<BlockPos> visited = new HashSet<>();
@@ -164,9 +164,8 @@ public class PumpBlockEntity extends KineticBlockEntity {
 					if (blockFace.isEquivalent(start))
 						continue;
 					if (hasReachedValidEndpoint(level, blockFace, pull)) {
-						pipeGraph.computeIfAbsent(currentPos, $ -> Pair.of(distance, new IdentityHashMap<>()))
-							.getSecond()
-							.put(face, pull);
+						pipeGraph.computeIfAbsent(currentPos, $ -> Pair.of(distance, DirBoolMapUtils.putBit(0, face.ordinal(), pull)));
+							// .put(face, pull);
 						targets.add(blockFace);
 						continue;
 					}
@@ -179,19 +178,16 @@ public class PumpBlockEntity extends KineticBlockEntity {
 					if (visited.contains(connectedPos))
 						continue;
 					if (distance + 1 >= maxDistance) {
-						pipeGraph.computeIfAbsent(currentPos, $ -> Pair.of(distance, new IdentityHashMap<>()))
-							.getSecond()
-							.put(face, pull);
+						pipeGraph.computeIfAbsent(currentPos, $ -> Pair.of(distance, DirBoolMapUtils.putBit(0, face.ordinal(), pull)));
+							// .put(face, pull);
 						targets.add(blockFace);
 						continue;
 					}
 
-					pipeGraph.computeIfAbsent(currentPos, $ -> Pair.of(distance, new IdentityHashMap<>()))
-						.getSecond()
-						.put(face, pull);
-					pipeGraph.computeIfAbsent(connectedPos, $ -> Pair.of(distance + 1, new IdentityHashMap<>()))
-						.getSecond()
-						.put(face.getOpposite(), !pull);
+					pipeGraph.computeIfAbsent(currentPos, $ -> Pair.of(distance, DirBoolMapUtils.putBit(0, face.ordinal(), pull)));
+						// .put(face, pull);
+                    pipeGraph.computeIfAbsent(connectedPos, $ -> Pair.of(distance + 1, DirBoolMapUtils.putBit(0, face.getOpposite().ordinal(), !pull)));
+                        // .put(face.getOpposite(), !pull);
 					frontier.add(Pair.of(distance + 1, connectedPos));
 				}
 			}
@@ -212,9 +208,7 @@ public class PumpBlockEntity extends KineticBlockEntity {
 				if (pipePos.equals(worldPosition))
 					continue;
 
-				boolean inbound = pipeGraph.get(pipePos)
-					.getSecond()
-					.get(pipeSide);
+				boolean inbound = DirBoolMapUtils.getBit(pipeGraph.get(pipePos).getSecond(), pipeSide.ordinal());
 				FluidTransportBehaviour pipeBehaviour = FluidPropagator.getPipe(level, pipePos);
 				if (pipeBehaviour == null)
 					continue;
@@ -225,20 +219,20 @@ public class PumpBlockEntity extends KineticBlockEntity {
 
 	}
 
-	protected boolean searchForEndpointRecursively(Map<BlockPos, Pair<Integer, Map<Direction, Boolean>>> pipeGraph,
+	protected boolean searchForEndpointRecursively(Map<BlockPos, Pair<Integer, Integer>> pipeGraph,
 		Set<BlockFace> targets, Map<Integer, Set<BlockFace>> validFaces, BlockFace currentFace, boolean pull) {
 		BlockPos currentPos = currentFace.getPos();
 		if (!pipeGraph.containsKey(currentPos))
 			return false;
-		Pair<Integer, Map<Direction, Boolean>> pair = pipeGraph.get(currentPos);
+		Pair<Integer, Integer> pair = pipeGraph.get(currentPos);
 		int distance = pair.getFirst();
 
 		boolean atLeastOneBranchSuccessful = false;
 		for (Direction nextFacing : Iterate.directions) {
 			if (nextFacing == currentFace.getFace())
 				continue;
-			Map<Direction, Boolean> map = pair.getSecond();
-			if (!map.containsKey(nextFacing))
+		    int map = pair.getSecond();
+			if (DirBoolMapUtils.containsBit(map, nextFacing.ordinal()))
 				continue;
 
 			BlockFace localTarget = new BlockFace(currentPos, nextFacing);
@@ -249,7 +243,7 @@ public class PumpBlockEntity extends KineticBlockEntity {
 				continue;
 			}
 
-			if (map.get(nextFacing) != pull)
+			if (DirBoolMapUtils.getBit(map, nextFacing.ordinal()) != pull)
 				continue;
 			if (!searchForEndpointRecursively(pipeGraph, targets, validFaces,
 				new BlockFace(currentPos.relative(nextFacing), nextFacing.getOpposite()), pull))

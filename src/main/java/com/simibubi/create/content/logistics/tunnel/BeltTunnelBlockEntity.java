@@ -1,6 +1,9 @@
 package com.simibubi.create.content.logistics.tunnel;
 
+import ru.sigpipe.utils.DirBoolMapUtils;
+
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -42,7 +45,7 @@ import net.minecraftforge.items.IItemHandler;
 public class BeltTunnelBlockEntity extends SmartBlockEntity {
 
 	public Map<Direction, LerpedFloat> flaps;
-	public Set<Direction> sides;
+	public int sides;
 
 	protected LazyOptional<IItemHandler> cap = LazyOptional.empty();
 	protected List<Pair<Direction, Boolean>> flapsToSend;
@@ -50,7 +53,7 @@ public class BeltTunnelBlockEntity extends SmartBlockEntity {
 	public BeltTunnelBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
 		super(type, pos, state);
 		flaps = new EnumMap<>(Direction.class);
-		sides = new HashSet<>();
+		sides = 0;
 		flapsToSend = new LinkedList<>();
 	}
 
@@ -62,13 +65,16 @@ public class BeltTunnelBlockEntity extends SmartBlockEntity {
 
 	protected void writeFlapsAndSides(CompoundTag compound) {
 		ListTag flapsNBT = new ListTag();
-		for (Direction direction : flaps.keySet())
+		for (Direction direction : flaps.keySet()) {
 			flapsNBT.add(IntTag.valueOf(direction.get3DDataValue()));
+        }
 		compound.put("Flaps", flapsNBT);
 
 		ListTag sidesNBT = new ListTag();
-		for (Direction direction : sides)
+		for (Direction direction : Iterate.directions) {
+            if (!DirBoolMapUtils.containsBit(sides, direction.ordinal())) continue;
 			sidesNBT.add(IntTag.valueOf(direction.get3DDataValue()));
+        }
 		compound.put("Sides", sidesNBT);
 	}
 
@@ -86,27 +92,32 @@ public class BeltTunnelBlockEntity extends SmartBlockEntity {
 
 	@Override
 	protected void read(CompoundTag compound, boolean clientPacket) {
-		Set<Direction> newFlaps = new HashSet<>(6);
+        int newFlaps = 0;
 		ListTag flapsNBT = compound.getList("Flaps", Tag.TAG_INT);
 		for (Tag inbt : flapsNBT)
-			if (inbt instanceof IntTag)
-				newFlaps.add(Direction.from3DDataValue(((IntTag) inbt).getAsInt()));
+			if (inbt instanceof IntTag) {
+			    newFlaps = DirBoolMapUtils.setBit(newFlaps, Direction.from3DDataValue(((IntTag) inbt).getAsInt()).ordinal());
+            }
 
-		sides.clear();
+		sides = 0;
 		ListTag sidesNBT = compound.getList("Sides", Tag.TAG_INT);
 		for (Tag inbt : sidesNBT)
-			if (inbt instanceof IntTag)
-				sides.add(Direction.from3DDataValue(((IntTag) inbt).getAsInt()));
+			if (inbt instanceof IntTag) {
+                sides = DirBoolMapUtils.setBit(sides, Direction.from3DDataValue(((IntTag) inbt).getAsInt()).ordinal());
+            }
 
 		for (Direction d : Iterate.directions)
-			if (!newFlaps.contains(d))
+			if (!DirBoolMapUtils.containsBit(newFlaps, d.ordinal()))
 				flaps.remove(d);
 			else if (!flaps.containsKey(d))
 				flaps.put(d, createChasingFlap());
 
 		// Backwards compat
-		if (!compound.contains("Sides") && compound.contains("Flaps"))
-			sides.addAll(flaps.keySet());
+		if (!compound.contains("Sides") && compound.contains("Flaps")) {
+            for (Direction d : flaps.keySet()) {
+                sides = DirBoolMapUtils.putBit(sides, d.ordinal(), true);
+            }
+        }
 		super.read(compound, clientPacket);
 		if (clientPacket)
 			DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> InstancedRenderDispatcher.enqueueUpdate(this));
@@ -120,7 +131,7 @@ public class BeltTunnelBlockEntity extends SmartBlockEntity {
 
 	public void updateTunnelConnections() {
 		flaps.clear();
-		sides.clear();
+		sides = 0;
 		BlockState tunnelState = getBlockState();
 		for (Direction direction : Iterate.horizontalDirections) {
 			if (direction.getAxis() != tunnelState.getValue(BlockStateProperties.HORIZONTAL_AXIS)) {
@@ -135,7 +146,7 @@ public class BeltTunnelBlockEntity extends SmartBlockEntity {
 					continue;
 			}
 
-			sides.add(direction);
+			sides = DirBoolMapUtils.putBit(sides, direction.ordinal(), true);
 
 			// Flap might be occluded
 			BlockState nextState = level.getBlockState(worldPosition.relative(direction));

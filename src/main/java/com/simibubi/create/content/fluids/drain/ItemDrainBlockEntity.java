@@ -2,6 +2,7 @@ package com.simibubi.create.content.fluids.drain;
 
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.EnumMap;
 import java.util.Map;
 
 import com.simibubi.create.content.equipment.goggles.IHaveGoggleInformation;
@@ -40,11 +41,11 @@ public class ItemDrainBlockEntity extends SmartBlockEntity implements IHaveGoggl
 	SmartFluidTankBehaviour internalTank;
 	TransportedItemStack heldItem;
 	protected int processingTicks;
-	Map<Direction, LazyOptional<ItemDrainItemHandler>> itemHandlers;
+	Map<Direction, LazyOptional<ItemDrainItemHandler>> itemHandlers; // Enumed
 
 	public ItemDrainBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
 		super(type, pos, state);
-		itemHandlers = new IdentityHashMap<>();
+		itemHandlers = new EnumMap<>(Direction.class);
 		for (Direction d : Iterate.horizontalDirections) {
 			ItemDrainItemHandler itemDrainItemHandler = new ItemDrainItemHandler(this, d);
 			itemHandlers.put(d, LazyOptional.of(() -> itemDrainItemHandler));

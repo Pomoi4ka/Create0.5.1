@@ -1,6 +1,9 @@
 package com.simibubi.create.foundation.blockEntity.behaviour.filtering;
 
+import ru.sigpipe.utils.DirBoolMapUtils;
+
 import java.util.HashSet;
+import java.util.EnumMap;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -33,7 +36,7 @@ public class SidedFilteringBehaviour extends FilteringBehaviour {
 		super(be, sidedSlot);
 		this.filterFactory = filterFactory;
 		this.validDirections = validDirections;
-		sidedFilters = new IdentityHashMap<>();
+		sidedFilters = new EnumMap<>(Direction.class);
 		updateFilterPresence();
 	}
 
@@ -47,12 +50,13 @@ public class SidedFilteringBehaviour extends FilteringBehaviour {
 	}
 
 	public void updateFilterPresence() {
-		Set<Direction> valid = new HashSet<>();
+        int valid = 0;
 		for (Direction d : Iterate.directions)
-			if (validDirections.test(d))
-				valid.add(d);
+			if (validDirections.test(d)) {
+				valid = DirBoolMapUtils.putBit(valid, d.ordinal(), true);
+            }
 		for (Direction d : Iterate.directions)
-			if (valid.contains(d)) {
+			if (DirBoolMapUtils.containsBit(valid, d.ordinal())) {
 				if (!sidedFilters.containsKey(d))
 					sidedFilters.put(d, filterFactory.apply(d, new FilteringBehaviour(blockEntity, slotPositioning)));
 			} else if (sidedFilters.containsKey(d))

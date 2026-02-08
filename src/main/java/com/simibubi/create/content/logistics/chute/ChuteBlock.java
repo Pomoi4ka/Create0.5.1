@@ -1,5 +1,7 @@
 package com.simibubi.create.content.logistics.chute;
 
+import ru.sigpipe.utils.DirBoolMapUtils;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -73,7 +75,7 @@ public class ChuteBlock extends AbstractChuteBlock implements ProperWaterloggedB
 	public boolean isTransparent(BlockState state) {
 		return state.getValue(SHAPE) == Shape.WINDOW;
 	}
-	
+
 	@Override
 	public FluidState getFluidState(BlockState pState) {
 		return fluidState(pState);
@@ -128,7 +130,7 @@ public class ChuteBlock extends AbstractChuteBlock implements ProperWaterloggedB
 		}
 		return state;
 	}
-	
+
 	@Override
 	public BlockState updateShape(BlockState state, Direction direction, BlockState above, LevelAccessor world,
 		BlockPos pos, BlockPos p_196271_6_) {
@@ -152,7 +154,7 @@ public class ChuteBlock extends AbstractChuteBlock implements ProperWaterloggedB
 		if (!(state.getBlock() instanceof ChuteBlock))
 			return state;
 
-		Map<Direction, Boolean> connections = new HashMap<>();
+        int connections = 0;
 		int amtConnections = 0;
 		Direction facing = state.getValue(FACING);
 		boolean vertical = facing == Direction.DOWN;
@@ -170,7 +172,7 @@ public class ChuteBlock extends AbstractChuteBlock implements ProperWaterloggedB
 				.relative(direction));
 			boolean value =
 				diagonalInputChute.getBlock() instanceof ChuteBlock && diagonalInputChute.getValue(FACING) == direction;
-			connections.put(direction, value);
+			DirBoolMapUtils.putBit(connections, direction.ordinal(), value);
 			if (value)
 				amtConnections++;
 		}
@@ -182,11 +184,11 @@ public class ChuteBlock extends AbstractChuteBlock implements ProperWaterloggedB
 					: Shape.INTERSECTION);
 		if (noConnections)
 			return state.setValue(SHAPE, Shape.INTERSECTION);
-		if (connections.get(Direction.NORTH) && connections.get(Direction.SOUTH))
-			return state.setValue(SHAPE, Shape.INTERSECTION);
-		if (connections.get(Direction.EAST) && connections.get(Direction.WEST))
-			return state.setValue(SHAPE, Shape.INTERSECTION);
-		if (amtConnections == 1 && connections.get(facing) && !(getChuteFacing(above) == Direction.DOWN)
+		if (DirBoolMapUtils.getBit(connections, Direction.NORTH.ordinal()) &&
+            DirBoolMapUtils.getBit(connections, Direction.SOUTH.ordinal())) return state.setValue(SHAPE, Shape.INTERSECTION);
+		if (DirBoolMapUtils.getBit(connections, Direction.EAST.ordinal()) &&
+            DirBoolMapUtils.getBit(connections, Direction.WEST.ordinal())) return state.setValue(SHAPE, Shape.INTERSECTION);
+		if (amtConnections == 1 && DirBoolMapUtils.getBit(connections, facing.ordinal()) && !(getChuteFacing(above) == Direction.DOWN)
 			&& !(above.getBlock() instanceof FunnelBlock && FunnelBlock.getFunnelFacing(above) == Direction.DOWN))
 			return state.setValue(SHAPE, state.getValue(SHAPE) == Shape.ENCASED ? Shape.ENCASED : Shape.NORMAL);
 		return state.setValue(SHAPE, Shape.INTERSECTION);

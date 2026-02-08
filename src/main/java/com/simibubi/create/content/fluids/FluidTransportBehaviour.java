@@ -2,6 +2,7 @@ package com.simibubi.create.content.fluids;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -36,7 +37,7 @@ public abstract class FluidTransportBehaviour extends BlockEntityBehaviour {
 		IDLE; // Operate normally
 	}
 
-	public Map<Direction, PipeConnection> interfaces;
+	public Map<Direction, PipeConnection> interfaces; // Enumed
 	public UpdatePhase phase;
 
 	public FluidTransportBehaviour(SmartBlockEntity be) {
@@ -144,7 +145,7 @@ public abstract class FluidTransportBehaviour extends BlockEntityBehaviour {
 	public void read(CompoundTag nbt, boolean clientPacket) {
 		super.read(nbt, clientPacket);
 		if (interfaces == null)
-			interfaces = new IdentityHashMap<>();
+			interfaces = new EnumMap<>(Direction.class);
 		for (Direction face : Iterate.directions)
 			if (nbt.contains(face.getName()))
 				interfaces.computeIfAbsent(face, d -> new PipeConnection(d));
@@ -228,7 +229,7 @@ public abstract class FluidTransportBehaviour extends BlockEntityBehaviour {
 	private void createConnectionData() {
 		if (interfaces != null)
 			return;
-		interfaces = new IdentityHashMap<>();
+		interfaces = new EnumMap<>(Direction.class);
 		for (Direction d : Iterate.directions)
 			if (canHaveFlowToward(blockEntity.getBlockState(), d))
 				interfaces.put(d, new PipeConnection(d));
