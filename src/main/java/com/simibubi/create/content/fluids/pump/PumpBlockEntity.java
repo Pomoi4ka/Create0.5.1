@@ -232,7 +232,7 @@ public class PumpBlockEntity extends KineticBlockEntity {
 			if (nextFacing == currentFace.getFace())
 				continue;
 		    int map = pair.getSecond();
-			if (DirBoolMapUtils.containsBit(map, nextFacing.ordinal()))
+			if (!DirBoolMapUtils.containsBit(map, nextFacing.ordinal()))
 				continue;
 
 			BlockFace localTarget = new BlockFace(currentPos, nextFacing);
